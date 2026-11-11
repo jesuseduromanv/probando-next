@@ -8,24 +8,54 @@ on:
     branches: [ "main" ]
   pull_request:
     branches: [ "main" ]
+    types: [opened, synchronize] #A esto se les llama actividades, en este caso responde a cuando se abre una PR y cuando se agregan commits a la PR.
 
-jobs:
-  build:
 
-    runs-on: ubuntu-latest
+#Cada job se ejecuta en un entorno independiente. No importa si hay algun need, estos se ejecutan en su propio entorno, needs solo es el "como", no comparte automáticamente los archivos ni las dependencias instaladas.
+jobs: #Dentro de aqui definimos que JOBS hay. Nota: Distintos JOBS pueden ejecutarse en paralelo, (A no ser que dependan uno del otro, ahi se necesita algo llamado "needs" dentro del JOB)
+  build: #Es el identificador del JOB. En este caso lo llamamos build.
+    #needs: lint <------#### ESTE NEEDS ES EL COMENTARIO DE ARRIBA, EN DADO CASO QUE DEPENDA DE OTRO JOB SE NECESITA EL NEEDS, ESTO OBVIAMENTE TIENE QUE IR ANTES DE ESTE PASO.
+    runs-on: ubuntu-latest #Conocido como runner, es el entorno donde se ejecuta.
 
     strategy:
       matrix:
         node-version: [18.x, 20.x, 22.x]
         # See supported Node.js release schedule at https://nodejs.org/en/about/releases/
 
-    steps:
+    steps: #Contiene los pasos del trabajo y en el se define las acciones y comandos que se ejecutaran en el JOB. Normalmente si uno de estos falla ya no se ejecuta el siguiente, por ejemplo si el CI falla entonces el BUILD ya no se ejecuta y marca el trabajo como FALLIDO. (A no ser que se use la funcion always() en el if de un paso, entonces ese paso se ejecutara aunque haya fallado un paso anterior)
+
+    #uses utiliza una acción existente (normalmente preparada por Github) y run ejecuta comandos de terminal en el entorno seleccionado.
     - uses: actions/checkout@v4
     - name: Use Node.js ${{ matrix.node-version }}
       uses: actions/setup-node@v4
+      #El bloque with proporciona los parámetros que necesita la acción.
       with:
         node-version: ${{ matrix.node-version }}
-        cache: 'npm'
-    - run: npm ci
+        cache: 'npm' #Esto hace que en instalaciones de dependencias posteriores sean mas rapidas ya que se almacenan en cache.
+        #IMPORTANTE: los runners (ENTORNOS) pueden ser diferentes, pero la caché persiste entre ejecuciones y se puede restaurar en otra máquina virtual ESTA CACHE LA ADMINISTRA GITHUB. Esa es precisamente su utilidad.
+    - run: npm ci # Esto hace una instalacion limpia de dependencias, CI = Clean Installation
     - run: npm run build
     # - run: npm test
+    # Esto se ejecuta cuando se mergea un PR, es decir, cuando se hace un merge a la rama main. Se puede usar para hacer despliegues o notificaciones.
+  after-merge: # Asi se llama nuestro JOB, "after-merge".
+    if: github.event.pull_request.merged == true # La propiedad if decide si se ejecuta o no el JOB, en este caso solo se ejecuta si la PR fue mergeada.
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "El PR fue integrado"
+
+#OPERADORES EN CONDICIONALES COMO && Y || funcionan en los IFS por ejemplo:
+#if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+#esto sifica que el JOB solo se ejecuta si el evento es un push y la rama es main. Nota: tambien podemos ponerlo en un STEP en especifico, por ejemplo si queremos que un paso solo se ejecute si el evento es un push y la rama es main, entonces pondriamos el if en ese paso.
+
+#FUNCIONES DE Github Actions: 
+#Las más importantes son: 
+
+#success() Comprueba que los pasos o dependencias anteriores terminaron correctamente.
+#failure() Comprueba si algún paso o dependencia anterior falló.
+#always() Se ejecuta incluso si hubo errores o cancelaciones.
+#cancelled() Comprueba si el workflow fue cancelado.
+
+#Estas funciones se pueden usar en los ifs de los JOBS o de los STEPS, por ejemplo:
+# if: success()
+# o tambien se pueden combinar con otras condiciones, por ejemplo:
+# if: github.event_name == 'push' && success()
