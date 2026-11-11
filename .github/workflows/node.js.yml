@@ -22,7 +22,7 @@ jobs: #Dentro de aqui definimos que JOBS hay. Nota: Distintos JOBS pueden ejecut
         node-version: [18.x, 20.x, 22.x]
         # See supported Node.js release schedule at https://nodejs.org/en/about/releases/
 
-    steps: #Contiene los pasos del trabajo y en el se define las acciones y comandos que se ejecutaran en el JOB. Normalmente si uno de estos falla ya no se ejecuta el siguiente, por ejemplo si el CI falla entonces el BUILD ya no se ejecuta y marca el trabajo como FALLIDO.
+    steps: #Contiene los pasos del trabajo y en el se define las acciones y comandos que se ejecutaran en el JOB. Normalmente si uno de estos falla ya no se ejecuta el siguiente, por ejemplo si el CI falla entonces el BUILD ya no se ejecuta y marca el trabajo como FALLIDO. (A no ser que se use la funcion always() en el if de un paso, entonces ese paso se ejecutara aunque haya fallado un paso anterior)
 
     #uses utiliza una acción existente (normalmente preparada por Github) y run ejecuta comandos de terminal en el entorno seleccionado.
     - uses: actions/checkout@v4
@@ -47,3 +47,15 @@ jobs: #Dentro de aqui definimos que JOBS hay. Nota: Distintos JOBS pueden ejecut
 #if: github.event_name == 'push' && github.ref == 'refs/heads/main'
 #esto sifica que el JOB solo se ejecuta si el evento es un push y la rama es main. Nota: tambien podemos ponerlo en un STEP en especifico, por ejemplo si queremos que un paso solo se ejecute si el evento es un push y la rama es main, entonces pondriamos el if en ese paso.
 
+#FUNCIONES DE Github Actions: 
+#Las más importantes son: 
+
+#success() Comprueba que los pasos o dependencias anteriores terminaron correctamente.
+#failure() Comprueba si algún paso o dependencia anterior falló.
+#always() Se ejecuta incluso si hubo errores o cancelaciones.
+#cancelled() Comprueba si el workflow fue cancelado.
+
+#Estas funciones se pueden usar en los ifs de los JOBS o de los STEPS, por ejemplo:
+# if: success()
+# o tambien se pueden combinar con otras condiciones, por ejemplo:
+# if: github.event_name == 'push' && success()
